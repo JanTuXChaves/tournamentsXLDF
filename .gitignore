@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.env
+
+# Frontend
+node_modules/
+dist/
+
+# Android
+.gradle/
+build/
+local.properties
+.idea/
+
