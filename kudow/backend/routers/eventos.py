@@ -353,27 +353,52 @@ def gerar_chaves(
         db.flush()
 
         lutas_primeira_rodada = lutas_por_rodada[1]
-        random.shuffle(atletas_ids)
+        num_lutas_r1 = len(lutas_primeira_rodada)
 
-        for i in range(len(lutas_primeira_rodada)):
-            p = lutas_primeira_rodada[i]
+        atletas_objs = db.query(models.Atleta).filter(models.Atleta.codatl.in_(atletas_ids)).all()
+        entidade_por_atleta = {a.codatl: a.entidade_id for a in atletas_objs}
 
-            idx1 = i * 2
-            if idx1 < n:
-                p.atleta_1_id = atletas_ids[idx1]
+        grupos_entidade = defaultdict(list)
+        for aid in atletas_ids:
+            grupos_entidade[entidade_por_atleta.get(aid)].append(aid)
 
-            idx2 = i * 2 + 1
-            if idx2 < n:
-                p.atleta_2_id = atletas_ids[idx2]
+        for g in grupos_entidade.values():
+            random.shuffle(g)
+
+        grupos_ordenados = sorted(grupos_entidade.values(), key=len, reverse=True)
+        atletas_intercalados = []
+        max_len = max((len(g) for g in grupos_ordenados), default=0)
+        for idx_item in range(max_len):
+            for g in grupos_ordenados:
+                if idx_item < len(g):
+                    atletas_intercalados.append(g[idx_item])
+
+        cabecas = atletas_intercalados[:num_lutas_r1]
+        restantes = list(atletas_intercalados[num_lutas_r1:])
+
+        for i, p in enumerate(lutas_primeira_rodada):
+            if i < len(cabecas):
+                p.atleta_1_id = cabecas[i]
+
+        for p in lutas_primeira_rodada:
+            if not restantes:
+                break
+            ent_1 = entidade_por_atleta.get(p.atleta_1_id)
+            escolhido_idx = 0
+            for idx_cand, cand_id in enumerate(restantes):
+                if ent_1 is None or entidade_por_atleta.get(cand_id) != ent_1:
+                    escolhido_idx = idx_cand
+                    break
+            p.atleta_2_id = restantes.pop(escolhido_idx)
 
         db.flush()
 
         for r in range(1, k + 1):
-            for p in lutas_por_rodada[r]:
-                if p.atleta_1_id is not None and p.atleta_2_id is None:
+            for p in lutas_primeira_rodada if r == 1 else lutas_por_rodada[r]:
+                if p.atleta_1_id is not None and p.atleta_2_id is None and r == 1:
                     p.vencedor_id = p.atleta_1_id
                     propagar_vencedor_para_pai(p, db)
-                elif p.atleta_1_id is None and p.atleta_2_id is not None:
+                elif p.atleta_1_id is None and p.atleta_2_id is not None and r == 1:
                     p.vencedor_id = p.atleta_2_id
                     propagar_vencedor_para_pai(p, db)
 
@@ -389,7 +414,8 @@ def gerar_chaves(
     db.commit()
     return {"mensagem": f"Chaves geradas com sucesso. Total de {partidas_criadas_total} partidas criadas."}
 
-PDF_DIR = "media/pdfs"
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PDF_DIR = os.path.join(BACKEND_DIR, "media", "pdfs")
 os.makedirs(PDF_DIR, exist_ok=True)
 
 @router.get("/{evento_id}/pdf", response_class=FileResponse)
@@ -962,6 +988,9 @@ async def importar_csv_atletas_torneio(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao processar arquivo CSV: {str(e)}")
+
+@router.get("/{evento_id}/inscricoes/sem-par")
+@router.get("/{evento_id}/inscricoes-sem-par")
 def listar_inscricoes_sem_par(evento_id: int, db: Session = Depends(get_db)):
     inscricoes = db.query(models.Inscricao).filter(
         models.Inscricao.evento_id == evento_id,

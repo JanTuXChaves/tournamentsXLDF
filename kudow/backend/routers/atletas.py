@@ -14,8 +14,9 @@ router = APIRouter(
     tags=["Atletas"]
 )
 
-MEDIA_DIR = "media/atletas"
-CERTIFICADOS_DIR = "media/certificados"
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MEDIA_DIR = os.path.join(BACKEND_DIR, "media", "atletas")
+CERTIFICADOS_DIR = os.path.join(BACKEND_DIR, "media", "certificados")
 os.makedirs(MEDIA_DIR, exist_ok=True)
 os.makedirs(CERTIFICADOS_DIR, exist_ok=True)
 
@@ -473,10 +474,11 @@ def upload_documento(atleta_id: int, file: UploadFile = File(...), db: Session =
 
     safe_name = f"doc_{atleta_id}_{uuid.uuid4().hex[:8]}{ext}"
     file_path = os.path.join(MEDIA_DIR, safe_name)
+    rel_path = f"media/atletas/{safe_name}"
     with open(file_path, "wb") as buffer:
         buffer.write(content)
 
-    return {"filename": safe_name, "path": file_path, "mensagem": "Documento enviado com sucesso"}
+    return {"filename": safe_name, "path": rel_path, "mensagem": "Documento enviado com sucesso"}
 
 @router.post("/{atleta_id}/foto")
 def upload_foto(atleta_id: int, file: UploadFile = File(...), db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
@@ -502,13 +504,14 @@ def upload_foto(atleta_id: int, file: UploadFile = File(...), db: Session = Depe
         raise HTTPException(status_code=413, detail="A imagem excede o tamanho máximo permitido de 5 MB.")
 
     file_path = os.path.join(MEDIA_DIR, f"foto_{atleta_id}{file_extension}")
+    rel_path = f"media/atletas/foto_{atleta_id}{file_extension}"
     with open(file_path, "wb") as buffer:
         buffer.write(content)
 
-    atleta.foto = file_path
+    atleta.foto = rel_path
     db.commit()
 
-    return {"filename": f"foto_{atleta_id}{file_extension}", "path": file_path, "mensagem": "Foto enviada com sucesso"}
+    return {"filename": f"foto_{atleta_id}{file_extension}", "path": rel_path, "mensagem": "Foto enviada com sucesso"}
 
 from datetime import date
 from fastapi import Form
@@ -551,6 +554,7 @@ def upload_certificado(
     import uuid
     safe_filename = f"cert_{atleta_id}_{uuid.uuid4().hex[:8]}.pdf"
     file_path = os.path.join(CERTIFICADOS_DIR, safe_filename)
+    rel_path = f"media/certificados/{safe_filename}"
 
     with open(file_path, "wb") as buffer:
         buffer.write(content)
@@ -559,7 +563,7 @@ def upload_certificado(
         atleta_id=atleta_id,
         data_certificado=data_certificado,
         descricao=descricao,
-        arquivo_caminho=file_path.replace("\\", "/")
+        arquivo_caminho=rel_path
     )
 
     db.add(novo_certificado)
@@ -588,8 +592,9 @@ def deletar_certificado(atleta_id: int, cert_id: int, db: Session = Depends(get_
         raise HTTPException(status_code=404, detail="Certificado não encontrado")
 
     try:
-        if os.path.exists(certificado.arquivo_caminho):
-            os.remove(certificado.arquivo_caminho)
+        full_cert_path = os.path.join(BACKEND_DIR, certificado.arquivo_caminho.lstrip("/"))
+        if os.path.exists(full_cert_path):
+            os.remove(full_cert_path)
     except Exception as e:
         print(f"Erro ao deletar arquivo {certificado.arquivo_caminho}: {e}")
 

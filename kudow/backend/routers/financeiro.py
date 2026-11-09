@@ -460,14 +460,19 @@ def obter_resumo_financeiro_entidade(
     total_atletas = db.query(models.Atleta).filter(models.Atleta.entidade_id == entidade_id).count()
 
     return {
+        "entidade_id": entidade.codenti,
         "entidade_nome": entidade.nome,
+        "nome_entidade": entidade.nome,
         "chave_pix_repasse": entidade.chave_pix_repasse,
         "tipo_chave_pix_repasse": entidade.tipo_chave_pix_repasse,
         "titular_conta_repasse": entidade.titular_conta_repasse,
         "valor_mensalidade_padrao": float(entidade.valor_mensalidade_padrao or 120.00),
         "dia_vencimento_mensalidade": entidade.dia_vencimento_mensalidade or 10,
         "saldo_liquido_disponivel": round(saldo_liquido_disponivel, 2),
+        "saldo_aguardando_repasse": round(saldo_liquido_disponivel, 2),
         "saldo_ja_repassado": round(saldo_ja_repassado, 2),
+        "total_ja_repassado": round(saldo_ja_repassado, 2),
+        "total_arrecadado_liquido": round(saldo_liquido_disponivel + saldo_ja_repassado, 2),
         "faturamento_bruto_total": round(total_bruto, 2),
         "taxa_kudow_retida_total": round(total_taxa_kudow, 2),
         "total_atletas": total_atletas,
@@ -844,14 +849,12 @@ def atualizar_configuracoes_taxas(
     if not config:
         config = models.ConfiguracaoTaxas(
             taxa_mensalidade_pct=dados.taxa_mensalidade_pct,
-            taxa_inscricao_torneio_pct=dados.taxa_inscricao_torneio_pct,
-            updated_at=datetime.now()
+            taxa_inscricao_torneio_pct=dados.taxa_inscricao_torneio_pct
         )
         db.add(config)
     else:
         config.taxa_mensalidade_pct = dados.taxa_mensalidade_pct
         config.taxa_inscricao_torneio_pct = dados.taxa_inscricao_torneio_pct
-        config.updated_at = datetime.now()
 
     db.commit()
     return {

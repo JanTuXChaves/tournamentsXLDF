@@ -10,7 +10,8 @@ router = APIRouter(
     tags=["Entidades"]
 )
 
-MEDIA_DIR = "media/entidades"
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MEDIA_DIR = os.path.join(BACKEND_DIR, "media", "entidades")
 os.makedirs(MEDIA_DIR, exist_ok=True)
 
 @router.post("/", response_model=schemas.EntidadeResponse, status_code=status.HTTP_201_CREATED)
