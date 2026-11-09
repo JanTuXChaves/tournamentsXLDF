@@ -26,8 +26,9 @@ app = FastAPI(
     redoc_url=None if IS_PROD else "/redoc",
 )
 
-os.makedirs("media/certificados", exist_ok=True)
-app.mount("/media", StaticFiles(directory="media"), name="media")
+MEDIA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "media")
+os.makedirs(os.path.join(MEDIA_DIR, "certificados"), exist_ok=True)
+app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 
 raw_origins = os.getenv("ALLOWED_ORIGINS", "*")
 allowed_origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
