@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 venv/
 .env
+*.db
+kudow/backend/media/pdfs/*.pdf
 
 # Frontend
 node_modules/
@@ -13,4 +15,3 @@ dist/
 build/
 local.properties
 .idea/
-
